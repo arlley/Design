@@ -1,0 +1,3 @@
+rootProject.name = 'design-mode'
+include 'my-spring-core'
+
