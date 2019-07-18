@@ -77,49 +77,78 @@ public class DefaultBeanFactory implements BeanFactory, BeanDefinitionRegister {
         if (!Objects.isNull(beanDefinition.getBeanClass())){
             if(StringUtils.isBlank(beanDefinition.getStaticConstructorMethod())){
                 // 通过类反射
-                try {
-                    instance = beanDefinition.getBeanClass().newInstance();
-                }catch (InstantiationException e){
-                    log.error("bean[{}]创建实例发生异常", beanName, ExceptionUtils.getStackTrace(e));
-                }catch (IllegalAccessException e){
-                    log.error("bean[{}]无权限访问类", beanName, ExceptionUtils.getStackTrace(e));
-                }
+                this.doCreateInstanceByClass(beanName, beanDefinition);
             }else{
                 //静态方法
-                Method method = null;
-                try {
-                    method = beanDefinition.getBeanClass().getMethod(beanDefinition.getStaticConstructorMethod(), null);
-                    instance = method.invoke(null, null);
-                }catch (NoSuchMethodException e){
-                    log.error("bean[{}]没有对应的静态工厂方法", beanName, ExceptionUtils.getStackTrace(e));
-                }catch (IllegalAccessException e){
-                    log.error("bean[{}]无权限访问类", beanName, ExceptionUtils.getStackTrace(e));
-                }catch (InvocationTargetException e){
-                    log.error("bean[{}]执行静态构造方法发生异常", beanName,ExceptionUtils.getStackTrace(e));
-                }
+                this.doCreateInstanceByStaticMethod(beanName, beanDefinition);
             }
         }else{
             //工厂方法构造
-            Object beanFactory = this.getBean(beanDefinition.getBeanFactoryBeanName());
-            if(!Objects.isNull(beanFactory)){
-                Method constructorMethod = null;
-                try {
-                    constructorMethod = beanFactory.getClass().getMethod(beanDefinition.getConstructorMethod(), null);
-                    instance = constructorMethod.invoke(beanFactory, null);
-                }catch (NoSuchMethodException e){
-                    log.error("工厂方法创建bean[{}]无效", beanName, ExceptionUtils.getStackTrace(e));
-                }catch (IllegalAccessException e){
-                    log.error("bean[{}]无权限访问类", beanName, ExceptionUtils.getStackTrace(e));
-                }catch (InvocationTargetException e){
-                    log.error("bean[{}]执行工厂构造方法发生异常", beanName,ExceptionUtils.getStackTrace(e));
-                }
-            }
+            this.doCreateInstanceByMethod(beanName, beanDefinition);
         }
         if(Objects.isNull(instance)){
             return null;
         }
         if (beanDefinition.isSingleton()){
             instanceMap.put(beanName, instance);
+        }
+        return instance;
+    }
+
+
+    /**
+     * 通过bean的类创建bean的实例。
+     * @param beanName
+     *        beanName bean的名字，not null.
+     * @param beanDefinition
+     *        bean的定义， not null。
+     * @return
+     */
+    private Object doCreateInstanceByClass(String beanName, BeanDefinition beanDefinition){
+        // 通过类反射
+        Object instance = null;
+        try {
+            instance = beanDefinition.getBeanClass().newInstance();
+        }catch (InstantiationException e){
+            log.error("bean[{}]创建实例发生异常", beanName, ExceptionUtils.getStackTrace(e));
+        }catch (IllegalAccessException e){
+            log.error("bean[{}]无权限访问类", beanName, ExceptionUtils.getStackTrace(e));
+        }
+        return instance;
+    }
+
+    private Object doCreateInstanceByStaticMethod(String beanName, BeanDefinition beanDefinition){
+        //静态方法
+        Method method = null;
+        Object instance = null;
+        try {
+            method = beanDefinition.getBeanClass().getMethod(beanDefinition.getStaticConstructorMethod(), null);
+            instance = method.invoke(null, null);
+        }catch (NoSuchMethodException e){
+            log.error("bean[{}]没有对应的静态工厂方法", beanName, ExceptionUtils.getStackTrace(e));
+        }catch (IllegalAccessException e){
+            log.error("bean[{}]无权限访问类", beanName, ExceptionUtils.getStackTrace(e));
+        }catch (InvocationTargetException e){
+            log.error("bean[{}]执行静态构造方法发生异常", beanName,ExceptionUtils.getStackTrace(e));
+        }
+        return instance;
+    }
+
+    private Object doCreateInstanceByMethod(String beanName, BeanDefinition beanDefinition){
+        Object beanFactory = this.getBean(beanDefinition.getBeanFactoryBeanName());
+        Object instance = null;
+        if(!Objects.isNull(beanFactory)){
+            Method constructorMethod = null;
+            try {
+                constructorMethod = beanFactory.getClass().getMethod(beanDefinition.getConstructorMethod(), null);
+                instance = constructorMethod.invoke(beanFactory, null);
+            }catch (NoSuchMethodException e){
+                log.error("工厂方法创建bean[{}]无效", beanName, ExceptionUtils.getStackTrace(e));
+            }catch (IllegalAccessException e){
+                log.error("bean[{}]无权限访问类", beanName, ExceptionUtils.getStackTrace(e));
+            }catch (InvocationTargetException e){
+                log.error("bean[{}]执行工厂构造方法发生异常", beanName,ExceptionUtils.getStackTrace(e));
+            }
         }
         return instance;
     }
