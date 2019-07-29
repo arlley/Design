@@ -3,6 +3,9 @@ package com.arlley.design.mode.spring.core.general;
 import com.arlley.design.mode.spring.core.api.BeanDefinition;
 import org.apache.commons.lang3.StringUtils;
 
+import java.lang.reflect.Constructor;
+import java.util.List;
+
 public class DefaultBeanDefinition implements BeanDefinition {
 
     private Class<?> beanClass;
@@ -14,6 +17,10 @@ public class DefaultBeanDefinition implements BeanDefinition {
     private String beanFactoryBeanName;
 
     private String scorp;
+
+    private List<?> constructorArguments;
+
+    private Constructor<?> constructor;
 
     /**
      * 直接通过beanClass实例化
@@ -76,5 +83,20 @@ public class DefaultBeanDefinition implements BeanDefinition {
     @Override
     public boolean isPrototype() {
         return StringUtils.equals(this.scorp, SCORE_PROTOTYPE);
+    }
+
+    @Override
+    public List<?> getConstructorArgumentValues() {
+        return this.constructorArguments;
+    }
+
+    @Override
+    public Constructor<?> getConstructor() {
+        return this.constructor;
+    }
+
+    @Override
+    public void setConstructor(Constructor<?> constructor) {
+        this.constructor = constructor;
     }
 }

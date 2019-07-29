@@ -3,16 +3,19 @@ package com.arlley.design.mode.spring.core.general;
 import com.arlley.design.mode.spring.core.api.BeanDefinition;
 import com.arlley.design.mode.spring.core.api.BeanDefinitionRegister;
 import com.arlley.design.mode.spring.core.api.BeanFactory;
+import com.arlley.design.mode.spring.core.api.BeanReference;
 import com.sun.istack.internal.Nullable;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Map;
-import java.util.Objects;
+import java.lang.reflect.Type;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -95,6 +98,87 @@ public class DefaultBeanFactory implements BeanFactory, BeanDefinitionRegister {
         return instance;
     }
 
+    @Override
+    public Object[] getConstructorValues(BeanDefinition bd) {
+        return this.getRealValue(bd.getConstructorArgumentValues());
+    }
+
+    @Override
+    public Constructor<?> determineConstructor(BeanDefinition bd) {
+        if(Objects.isNull(bd) || Objects.isNull(bd.getBeanClass())){
+            return null;
+        }
+        if(!Objects.isNull(bd.getConstructor())){
+            return bd.getConstructor();
+        }
+
+        Class<?> beanClass = bd.getBeanClass();
+        Object[] params = this.getConstructorValues(bd);
+
+        if(params == null || params.length == 0){
+            return null;
+        }
+        Class[] paramClasses = new Class[params.length];
+        int index = 0;
+        for(Object param:params){
+            paramClasses[index++] = param.getClass();
+        }
+        Constructor<?> result = null;
+        try {
+            result = beanClass.getConstructor(paramClasses);
+        }catch (NoSuchMethodException e){
+
+        }
+        if(Objects.isNull(result)){
+            Constructor<?>[] constructors = beanClass.getConstructors();
+            outer:for(Constructor<?> constructor: constructors){
+                Class<?>[] paramTypes = constructor.getParameterTypes();
+                if(paramTypes.length == paramClasses.length){
+                    for(int i=0;i<paramTypes.length;i++){
+                        if(!paramTypes[i].isAssignableFrom(paramClasses[i])){
+                            continue outer;
+                        }
+                    }
+                    result = constructor;
+                    break ;
+                }
+            }
+        }
+        bd.setConstructor(result);
+        return result;
+    }
+
+
+
+
+    private Object[] getRealValue(List<?> reference){
+        if(CollectionUtils.isEmpty(reference)){
+            return null;
+        }
+        Object[] result = new Object[reference.size()];
+        int index = 0;
+        Object value = null;
+        for(Object ref:reference){
+            if(ref == null){
+                value = null;
+            }else if(ref instanceof BeanReference){
+                value = this.getBean(((BeanReference) ref).getBeanName());
+            }else if(ref instanceof Object[]){
+
+            }else if(ref instanceof Collection){
+
+            }else if(ref instanceof Properties){
+
+            }else if(ref instanceof Map){
+
+            }else {
+                value = ref;
+            }
+            result[index++] = value;
+        }
+        return result;
+    }
+
 
     /**
      * 通过bean的类创建bean的实例。
@@ -108,11 +192,17 @@ public class DefaultBeanFactory implements BeanFactory, BeanDefinitionRegister {
         // 通过类反射
         Object instance = null;
         try {
-            instance = beanDefinition.getBeanClass().newInstance();
+            if(Objects.isNull(this.getConstructorValues(beanDefinition))) {
+                instance = beanDefinition.getBeanClass().newInstance();
+            }else{
+                instance = this.determineConstructor(beanDefinition).newInstance(this.getConstructorValues(beanDefinition));
+            }
         }catch (InstantiationException e){
             log.error("bean[{}]创建实例发生异常", beanName, ExceptionUtils.getStackTrace(e));
         }catch (IllegalAccessException e){
             log.error("bean[{}]无权限访问类", beanName, ExceptionUtils.getStackTrace(e));
+        }catch (InvocationTargetException e){
+            log.error("bean[{}]创建实例失败", beanName, ExceptionUtils.getStackTrace(e));
         }
         return instance;
     }

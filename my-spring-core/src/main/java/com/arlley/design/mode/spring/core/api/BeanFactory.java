@@ -1,5 +1,7 @@
 package com.arlley.design.mode.spring.core.api;
 
+import java.lang.reflect.Constructor;
+
 /**
  *<p>
  *     bean的工厂接口。
@@ -17,4 +19,8 @@ public interface BeanFactory {
      *        bean的实例。
      */
     Object getBean(String beanName);
+
+    Object[] getConstructorValues(BeanDefinition bd);
+
+    Constructor<?> determineConstructor(BeanDefinition bd);
 }

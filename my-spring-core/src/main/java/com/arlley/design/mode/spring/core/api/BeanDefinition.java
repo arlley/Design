@@ -2,6 +2,8 @@ package com.arlley.design.mode.spring.core.api;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.lang.reflect.Constructor;
+import java.util.List;
 import java.util.Objects;
 
 public interface BeanDefinition {
@@ -23,6 +25,13 @@ public interface BeanDefinition {
     boolean isSingleton();
 
     boolean isPrototype();
+
+    //DI部分
+    List<?> getConstructorArgumentValues();
+
+    Constructor<?> getConstructor();
+
+    void setConstructor(Constructor<?> constructor);
 
     default boolean validate(){
         if(Objects.isNull(this.getBeanClass())){
